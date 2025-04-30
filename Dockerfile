@@ -10,5 +10,5 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
 
-EXPOSE 8080  # 👈 ESTE PUERTO DEBE COINCIDIR CON EL QUE USAS EN Program.cs
+EXPOSE 8080
 ENTRYPOINT ["dotnet", "VerificadorPOD_API.dll"]
