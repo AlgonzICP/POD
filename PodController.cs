@@ -81,7 +81,7 @@ public class PodController : ControllerBase
             max_tokens = 300
         };
 
-        var apiKey = "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";
+        var apiKey = "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";
 
         using var httpClient = new HttpClient
         {
