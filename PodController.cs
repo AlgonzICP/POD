@@ -49,6 +49,12 @@ public class PodController : ControllerBase
             Console.WriteLine("🖼️ Iniciando recorte de imagen...");
             using (var image = Image.Load<Rgba32>(imagen.OpenReadStream()))
             {
+                if (zona.Right > image.Width || zona.Bottom > image.Height)
+                {
+                    Console.WriteLine("❌ Zona de recorte fuera de los límites de la imagen.");
+                    return BadRequest("La imagen es demasiado pequeña o no tiene la zona esperada.");
+                }
+
                 image.Mutate(x => x.Crop(zona));
                 image.Save(tempPath);
             }
@@ -56,15 +62,15 @@ public class PodController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine("❌ Error al procesar la imagen: " + ex.Message);
-            return BadRequest("Error al procesar la imagen.");
+            Console.WriteLine("❌ Error al procesar la imagen:");
+            Console.WriteLine(ex.ToString());
+            return BadRequest("Error al procesar la imagen: " + ex.Message);
         }
 
         byte[] imageBytes = await System.IO.File.ReadAllBytesAsync(tempPath);
         string base64Image = Convert.ToBase64String(imageBytes);
 
-        var prompt = $"Extrae el nombre completo y el DNI del destinatario de este POD. Luego, indica si coincide exactamente con el nombre proporcionado: \"{nombreCliente}\".\n" +
-                     "Responde solo con este formato:\nNombre: <nombre extraído>\nDNI: <dni>\nCoincide: Sí/No";
+        string prompt = $"En esta imagen de un POD, extrae el nombre completo y DNI del destinatario. El nombre esperado es: \"{nombreCliente}\". Al final indica si coinciden exactamente (Sí o No). Formato:\nNombre: ...\nDNI: ...\nCoincide: ...";
 
         var requestBody = new
         {
@@ -88,7 +94,9 @@ public class PodController : ControllerBase
             max_tokens = 300
         };
 
+        // ⚠️ Asegúrate de tener esta clave correctamente protegida o usar variable de entorno
         var apiKey = "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";
+
         using var httpClient = new HttpClient
         {
             Timeout = TimeSpan.FromSeconds(20)
@@ -106,6 +114,12 @@ public class PodController : ControllerBase
         Console.WriteLine($"📬 Respuesta HTTP recibida de OpenAI: {response.StatusCode}");
 
         string result = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            Console.WriteLine("❌ Error de OpenAI:\n" + result);
+            return BadRequest("Error de OpenAI: " + result);
+        }
 
         try
         {
