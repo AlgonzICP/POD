@@ -11,17 +11,21 @@ namespace VerificadorPOD_API.Controllers;
 public class PodController : ControllerBase
 {
     [HttpPost]
-    public async Task<IActionResult> Post([FromForm] IFormFile imagen, [FromForm] string transportista)
+    public async Task<IActionResult> Post(
+        [FromForm] IFormFile imagen,
+        [FromForm] string transportista,
+        [FromForm] string nombreCliente)
     {
         Console.WriteLine("🚀 Petición recibida en /api/pod");
 
-        if (imagen == null || string.IsNullOrWhiteSpace(transportista))
+        if (imagen == null || string.IsNullOrWhiteSpace(transportista) || string.IsNullOrWhiteSpace(nombreCliente))
         {
-            Console.WriteLine("❌ Imagen o transportista no válidos.");
-            return BadRequest("Imagen o transportista no válidos.");
+            Console.WriteLine("❌ Imagen, transportista o nombre del cliente no válidos.");
+            return BadRequest("Imagen, transportista o nombre del cliente no válidos.");
         }
 
         Console.WriteLine($"✅ Transportista recibido: {transportista}");
+        Console.WriteLine($"✅ Nombre del cliente esperado: {nombreCliente}");
 
         var zonasRecorte = new Dictionary<string, Rectangle>
         {
@@ -59,16 +63,19 @@ public class PodController : ControllerBase
         byte[] imageBytes = await System.IO.File.ReadAllBytesAsync(tempPath);
         string base64Image = Convert.ToBase64String(imageBytes);
 
+        var prompt = $"Extrae el nombre completo y el DNI del destinatario de este POD. Luego, indica si coincide exactamente con el nombre proporcionado: \"{nombreCliente}\".\n" +
+                     "Responde solo con este formato:\nNombre: <nombre extraído>\nDNI: <dni>\nCoincide: Sí/No";
+
         var requestBody = new
         {
-            model = "gpt-4.1",
+            model = "gpt-4-vision-preview",
             messages = new object[]
             {
                 new {
                     role = "user",
                     content = new object[]
                     {
-                        new { type = "text", text = "Extrae el nombre completo y el DNI del destinatario de este POD. Responde solo con:\nNombre: <nombre>\nDNI: <dni>" },
+                        new { type = "text", text = prompt },
                         new {
                             type = "image_url",
                             image_url = new {
@@ -112,7 +119,15 @@ public class PodController : ControllerBase
 
             Console.WriteLine("✅ Resultado recibido de OpenAI:\n" + content);
 
-            return Ok(content);
+            // Eliminar imagen temporal
+            System.IO.File.Delete(tempPath);
+
+            // Devolver resultado con nombre esperado
+            return Ok(new
+            {
+                resultado = content,
+                nombreEsperado = nombreCliente
+            });
         }
         catch (Exception ex)
         {
