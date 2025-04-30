@@ -68,7 +68,7 @@ public class PodController : ControllerBase
 
         var requestBody = new
         {
-            model = "gpt-4-vision-preview",
+            model = "gpt-4.1",
             messages = new object[]
             {
                 new {
@@ -88,7 +88,7 @@ public class PodController : ControllerBase
             max_tokens = 300
         };
 
-        var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? throw new InvalidOperationException("Falta OPENAI_API_KEY");
+        var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? throw new InvalidOperationException("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");
 
         using var httpClient = new HttpClient
         {
