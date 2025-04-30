@@ -49,6 +49,9 @@ public class PodController : ControllerBase
             Console.WriteLine("🖼️ Iniciando recorte de imagen...");
             using (var image = Image.Load<Rgba32>(imagen.OpenReadStream()))
             {
+                Console.WriteLine($"📏 Dimensiones de imagen: ancho={image.Width}, alto={image.Height}");
+                Console.WriteLine($"📐 Zona de recorte: {zona}");
+
                 if (zona.Right > image.Width || zona.Bottom > image.Height)
                 {
                     Console.WriteLine("❌ Zona de recorte fuera de los límites de la imagen.");
@@ -94,7 +97,6 @@ public class PodController : ControllerBase
             max_tokens = 300
         };
 
-        // ⚠️ Asegúrate de tener esta clave correctamente protegida o usar variable de entorno
         var apiKey = "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";
 
         using var httpClient = new HttpClient
@@ -112,7 +114,6 @@ public class PodController : ControllerBase
         );
 
         Console.WriteLine($"📬 Respuesta HTTP recibida de OpenAI: {response.StatusCode}");
-
         string result = await response.Content.ReadAsStringAsync();
 
         if (!response.IsSuccessStatusCode)
@@ -135,7 +136,6 @@ public class PodController : ControllerBase
             // Eliminar imagen temporal
             System.IO.File.Delete(tempPath);
 
-            // Devolver resultado con nombre esperado
             return Ok(new
             {
                 resultado = content,
@@ -146,7 +146,7 @@ public class PodController : ControllerBase
         {
             Console.WriteLine("❌ Error al analizar la respuesta de OpenAI: " + ex.Message);
             Console.WriteLine("🔍 Contenido recibido:\n" + result);
-            return BadRequest("Error procesando respuesta de OpenAI.");
+            return BadRequest("Error procesando respuesta de OpenAI: " + ex.Message);
         }
     }
 }
