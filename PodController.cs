@@ -81,7 +81,7 @@ public class PodController : ControllerBase
             max_tokens = 300
         };
 
-        var apiKey = "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";
+        var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? throw new InvalidOperationException("Falta OPENAI_API_KEY");
 
         using var httpClient = new HttpClient
         {
