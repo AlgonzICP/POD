@@ -13,8 +13,15 @@ public class PodController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Post([FromForm] IFormFile imagen, [FromForm] string transportista)
     {
+        Console.WriteLine("🚀 Petición recibida en /api/pod");
+
         if (imagen == null || string.IsNullOrWhiteSpace(transportista))
+        {
+            Console.WriteLine("❌ Imagen o transportista no válidos.");
             return BadRequest("Imagen o transportista no válidos.");
+        }
+
+        Console.WriteLine($"✅ Transportista recibido: {transportista}");
 
         var zonasRecorte = new Dictionary<string, Rectangle>
         {
@@ -25,15 +32,28 @@ public class PodController : ControllerBase
         };
 
         if (!zonasRecorte.ContainsKey(transportista.ToLower()))
+        {
+            Console.WriteLine("❌ Transportista no reconocido.");
             return BadRequest("Transportista no reconocido.");
+        }
 
         Rectangle zona = zonasRecorte[transportista.ToLower()];
         string tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".jpeg");
 
-        using (var image = Image.Load<Rgba32>(imagen.OpenReadStream()))
+        try
         {
-            image.Mutate(x => x.Crop(zona));
-            image.Save(tempPath);
+            Console.WriteLine("🖼️ Iniciando recorte de imagen...");
+            using (var image = Image.Load<Rgba32>(imagen.OpenReadStream()))
+            {
+                image.Mutate(x => x.Crop(zona));
+                image.Save(tempPath);
+            }
+            Console.WriteLine("✅ Imagen recortada y guardada temporalmente en: " + tempPath);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("❌ Error al procesar la imagen: " + ex.Message);
+            return BadRequest("Error al procesar la imagen.");
         }
 
         byte[] imageBytes = await System.IO.File.ReadAllBytesAsync(tempPath);
@@ -62,13 +82,22 @@ public class PodController : ControllerBase
         };
 
         var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? throw new InvalidOperationException("Falta OPENAI_API_KEY");
-        using var httpClient = new HttpClient();
+
+        using var httpClient = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(20)
+        };
+
         httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+        Console.WriteLine("📡 Enviando solicitud a OpenAI...");
 
         var response = await httpClient.PostAsync(
             "https://api.openai.com/v1/chat/completions",
             new StringContent(System.Text.Json.JsonSerializer.Serialize(requestBody), System.Text.Encoding.UTF8, "application/json")
         );
+
+        Console.WriteLine($"📬 Respuesta HTTP recibida de OpenAI: {response.StatusCode}");
 
         string result = await response.Content.ReadAsStringAsync();
 
@@ -81,11 +110,15 @@ public class PodController : ControllerBase
                 .GetProperty("content")
                 .GetString();
 
+            Console.WriteLine("✅ Resultado recibido de OpenAI:\n" + content);
+
             return Ok(content);
         }
-        catch
+        catch (Exception ex)
         {
-            return BadRequest("Error procesando respuesta de OpenAI: " + result);
+            Console.WriteLine("❌ Error al analizar la respuesta de OpenAI: " + ex.Message);
+            Console.WriteLine("🔍 Contenido recibido:\n" + result);
+            return BadRequest("Error procesando respuesta de OpenAI.");
         }
     }
 }
