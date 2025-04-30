@@ -88,8 +88,7 @@ public class PodController : ControllerBase
             max_tokens = 300
         };
 
-        var apiKey = Environment.GetEnvironmentVariable("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") ?? throw new InvalidOperationException("Falta OPENAI_API_KEY");
-
+        var apiKey = "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";
         using var httpClient = new HttpClient
         {
             Timeout = TimeSpan.FromSeconds(20)
