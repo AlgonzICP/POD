@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
+using System.Net.Http.Headers;
 
 namespace VerificadorPOD_API.Controllers;
 
@@ -29,11 +30,11 @@ public class PodController : ControllerBase
         Rectangle zona = zonasRecorte[transportista.ToLower()];
         string tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".jpeg");
 
-using (var image = Image.Load<Rgba32>(imagen.OpenReadStream()))
-{
-    image.Mutate(x => x.Crop(zona));
-    image.Save(tempPath); // ✅ ahora sí se guarda bien
-}
+        using (var image = Image.Load<Rgba32>(imagen.OpenReadStream()))
+        {
+            image.Mutate(x => x.Crop(zona));
+            image.Save(tempPath);
+        }
 
         byte[] imageBytes = await System.IO.File.ReadAllBytesAsync(tempPath);
         string base64Image = Convert.ToBase64String(imageBytes);
@@ -61,6 +62,7 @@ using (var image = Image.Load<Rgba32>(imagen.OpenReadStream()))
         };
 
         var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? throw new InvalidOperationException("Falta OPENAI_API_KEY");
+        using var httpClient = new HttpClient();
         httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
         var response = await httpClient.PostAsync(
@@ -87,18 +89,3 @@ using (var image = Image.Load<Rgba32>(imagen.OpenReadStream()))
         }
     }
 }
-
-builder.Services.AddCors(options =>
-{
-  options.AddPolicy("AllowFrontend", policy =>
-  {
-    policy.WithOrigins("https://tu-proyecto.vercel.app")
-          .AllowAnyHeader()
-          .AllowAnyMethod();
-  });
-});
-
-var app = builder.Build();
-
-app.UseCors("AllowFrontend");
-app.MapControllers();
